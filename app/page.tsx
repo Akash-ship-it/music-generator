@@ -69,11 +69,6 @@ interface GeneratedMusic {
   categories: string[];
 }
 
-interface GenerationRequest {
-  type: "description" | "custom_lyrics" | "described_lyrics";
-  data: any;
-}
-
 interface StoredMusic extends GeneratedMusic {
   id: string;
   timestamp: number;
