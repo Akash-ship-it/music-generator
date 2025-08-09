@@ -183,7 +183,7 @@ export interface GenerationConfig {
    */
   export async function generateMusic(
     type: "description" | "custom_lyrics" | "described_lyrics",
-    data: any
+    data: GenerateFromDescriptionRequest | GenerateWithCustomLyricsRequest | GenerateWithDescribedLyricsRequest
   ): Promise<GeneratedMusic> {
     switch (type) {
       case "description":
@@ -229,15 +229,17 @@ export interface GenerationConfig {
   }
   
   // Utility function to validate request data
-  export function validateGenerationRequest(type: string, data: any): boolean {
-    switch (type) {
-      case "description":
-        return Boolean(data.full_described_song?.trim());
-      case "custom_lyrics":
-        return Boolean(data.prompt?.trim() && data.lyrics?.trim());
-      case "described_lyrics":
-        return Boolean(data.prompt?.trim() && data.described_lyrics?.trim());
-      default:
-        return false;
-    }
+export function validateGenerationRequest(type: string, data: GenerateFromDescriptionRequest | GenerateWithCustomLyricsRequest | GenerateWithDescribedLyricsRequest): boolean {
+  switch (type) {
+    case "description":
+      return Boolean((data as GenerateFromDescriptionRequest).full_described_song?.trim());
+    case "custom_lyrics":
+      const customLyricsData = data as GenerateWithCustomLyricsRequest;
+      return Boolean(customLyricsData.prompt?.trim() && customLyricsData.lyrics?.trim());
+    case "described_lyrics":
+      const describedLyricsData = data as GenerateWithDescribedLyricsRequest;
+      return Boolean(describedLyricsData.prompt?.trim() && describedLyricsData.described_lyrics?.trim());
+    default:
+      return false;
   }
+}

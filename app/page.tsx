@@ -53,6 +53,7 @@ import {
   GenerateWithDescribedLyricsRequest,
   validateGenerationRequest,
 } from "@/lib/api";
+import Image from "next/image";
 
 interface GenerationConfig {
   audio_duration: number;
@@ -78,8 +79,13 @@ interface StoredMusic extends GeneratedMusic {
   timestamp: number;
   title: string;
   type: string;
-  generationData?: any;
+  generationData?: GenerationRequestData;
 }
+
+type GenerationRequestData = 
+  | GenerateFromDescriptionRequest 
+  | GenerateWithCustomLyricsRequest 
+  | GenerateWithDescribedLyricsRequest;
 
 export default function MusicGeneratorPage() {
   // State management
@@ -113,7 +119,7 @@ export default function MusicGeneratorPage() {
   const saveToStorage = (
     music: GeneratedMusic,
     type: string,
-    generationData: any
+    generationData: GenerationRequestData
   ) => {
     try {
       if (typeof window === "undefined" || !window.localStorage) {
@@ -156,19 +162,19 @@ export default function MusicGeneratorPage() {
     }
   };
 
-  const generateTrackTitle = (type: string, data: any): string => {
-    const timestamp = new Date().toLocaleString();
-    switch (type) {
-      case "description":
-        return `${data.full_described_song?.slice(0, 30)}... - ${timestamp}`;
-      case "custom_lyrics":
-        return `${data.prompt?.slice(0, 30)}... - ${timestamp}`;
-      case "described_lyrics":
-        return `${data.prompt?.slice(0, 30)}... - ${timestamp}`;
-      default:
-        return `Generated Track - ${timestamp}`;
-    }
-  };
+const generateTrackTitle = (type: string, data: GenerationRequestData): string => {
+  const timestamp = new Date().toLocaleString();
+  switch (type) {
+    case "description":
+      return `${(data as GenerateFromDescriptionRequest).full_described_song?.slice(0, 30)}... - ${timestamp}`;
+    case "custom_lyrics":
+      return `${(data as GenerateWithCustomLyricsRequest).prompt?.slice(0, 30)}... - ${timestamp}`;
+    case "described_lyrics":
+      return `${(data as GenerateWithDescribedLyricsRequest).prompt?.slice(0, 30)}... - ${timestamp}`;
+    default:
+      return `Generated Track - ${timestamp}`;
+  }
+};
 
   const loadStoredTrack = (track: StoredMusic) => {
     setGeneratedMusic(track);
@@ -296,7 +302,7 @@ export default function MusicGeneratorPage() {
     }, 1000);
 
     try {
-      let requestData: any;
+      let requestData: GenerationRequestData;
       let type: "description" | "custom_lyrics" | "described_lyrics";
 
       // Determine request data based on active tab
@@ -393,11 +399,13 @@ export default function MusicGeneratorPage() {
               onClick={() => loadStoredTrack(track)}
             >
               <div className="flex items-start gap-3">
-                <img
-                  src={track.cover_image_cloudinary_url}
-                  alt="Track cover"
-                  className="w-12 h-12 rounded-lg object-cover"
-                />
+               <Image
+  src={track.cover_image_cloudinary_url}
+  alt="Track cover"
+  width={48}
+  height={48}
+  className="w-12 h-12 rounded-lg object-cover"
+/>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-white font-medium truncate text-sm">
                     {track.title}
@@ -706,11 +714,13 @@ export default function MusicGeneratorPage() {
                   {/* Enhanced Cover Art Section */}
                   <div className="flex gap-6 items-start">
                     <div className="relative group">
-                      <img
-                        src={generatedMusic.cover_image_cloudinary_url}
-                        alt="Album Cover"
-                        className="w-32 h-32 rounded-2xl object-cover shadow-2xl transition-transform group-hover:scale-105"
-                      />
+                    <Image
+  src={generatedMusic.cover_image_cloudinary_url}
+  alt="Album Cover"  
+  width={128}
+  height={128}
+  className="w-32 h-32 rounded-2xl object-cover shadow-2xl transition-transform group-hover:scale-105"
+/>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     </div>
 
