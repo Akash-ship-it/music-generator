@@ -77,9 +77,9 @@ interface StoredMusic extends GeneratedMusic {
   generationData?: GenerationRequestData;
 }
 
-type GenerationRequestData = 
-  | GenerateFromDescriptionRequest 
-  | GenerateWithCustomLyricsRequest 
+type GenerationRequestData =
+  | GenerateFromDescriptionRequest
+  | GenerateWithCustomLyricsRequest
   | GenerateWithDescribedLyricsRequest;
 
 export default function MusicGeneratorPage() {
@@ -157,19 +157,19 @@ export default function MusicGeneratorPage() {
     }
   };
 
-const generateTrackTitle = (type: string, data: GenerationRequestData): string => {
-  const timestamp = new Date().toLocaleString();
-  switch (type) {
-    case "description":
-      return `${(data as GenerateFromDescriptionRequest).full_described_song?.slice(0, 30)}... - ${timestamp}`;
-    case "custom_lyrics":
-      return `${(data as GenerateWithCustomLyricsRequest).prompt?.slice(0, 30)}... - ${timestamp}`;
-    case "described_lyrics":
-      return `${(data as GenerateWithDescribedLyricsRequest).prompt?.slice(0, 30)}... - ${timestamp}`;
-    default:
-      return `Generated Track - ${timestamp}`;
-  }
-};
+  const generateTrackTitle = (type: string, data: GenerationRequestData): string => {
+    const timestamp = new Date().toLocaleString();
+    switch (type) {
+      case "description":
+        return `${(data as GenerateFromDescriptionRequest).full_described_song?.slice(0, 30)}... - ${timestamp}`;
+      case "custom_lyrics":
+        return `${(data as GenerateWithCustomLyricsRequest).prompt?.slice(0, 30)}... - ${timestamp}`;
+      case "described_lyrics":
+        return `${(data as GenerateWithDescribedLyricsRequest).prompt?.slice(0, 30)}... - ${timestamp}`;
+      default:
+        return `Generated Track - ${timestamp}`;
+    }
+  };
 
   const loadStoredTrack = (track: StoredMusic) => {
     setGeneratedMusic(track);
@@ -394,13 +394,13 @@ const generateTrackTitle = (type: string, data: GenerationRequestData): string =
               onClick={() => loadStoredTrack(track)}
             >
               <div className="flex items-start gap-3">
-               <Image
-  src={track.cover_image_cloudinary_url}
-  alt="Track cover"
-  width={48}
-  height={48}
-  className="w-12 h-12 rounded-lg object-cover"
-/>
+                <Image
+                  src={track.cover_image_cloudinary_url}
+                  alt="Track cover"
+                  width={48}
+                  height={48}
+                  className="w-12 h-12 rounded-lg object-cover"
+                />
                 <div className="flex-1 min-w-0">
                   <h4 className="text-white font-medium truncate text-sm">
                     {track.title}
@@ -709,13 +709,13 @@ const generateTrackTitle = (type: string, data: GenerationRequestData): string =
                   {/* Enhanced Cover Art Section */}
                   <div className="flex gap-6 items-start">
                     <div className="relative group">
-                    <Image
-  src={generatedMusic.cover_image_cloudinary_url}
-  alt="Album Cover"  
-  width={128}
-  height={128}
-  className="w-32 h-32 rounded-2xl object-cover shadow-2xl transition-transform group-hover:scale-105"
-/>
+                      <Image
+                        src={generatedMusic.cover_image_cloudinary_url}
+                        alt="Album Cover"
+                        width={128}
+                        height={128}
+                        className="w-32 h-32 rounded-2xl object-cover shadow-2xl transition-transform group-hover:scale-105"
+                      />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     </div>
 
