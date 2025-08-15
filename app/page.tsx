@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo, useReducer, lazy, Suspense } from "react";
 import {
   Card,
   CardContent,
@@ -67,6 +67,7 @@ interface GeneratedMusic {
   cloudinary_url: string;
   cover_image_cloudinary_url: string;
   categories: string[];
+  generationData?: GenerationRequestData;
 }
 
 interface StoredMusic extends GeneratedMusic {
@@ -82,20 +83,54 @@ type GenerationRequestData =
   | GenerateWithCustomLyricsRequest
   | GenerateWithDescribedLyricsRequest;
 
-export default function MusicGeneratorPage() {
+function MusicGeneratorPage() {
+  // Define reducer for complex state management
+  type PlayerState = {
+    isPlaying: boolean;
+    currentTime: number;
+    duration: number;
+    volume: number;
+  };
+
+  type PlayerAction =
+    | { type: 'PLAY' }
+    | { type: 'PAUSE' }
+    | { type: 'SET_CURRENT_TIME'; payload: number }
+    | { type: 'SET_DURATION'; payload: number }
+    | { type: 'SET_VOLUME'; payload: number };
+
+  const playerReducer = (state: PlayerState, action: PlayerAction): PlayerState => {
+    switch (action.type) {
+      case 'PLAY':
+        return { ...state, isPlaying: true };
+      case 'PAUSE':
+        return { ...state, isPlaying: false };
+      case 'SET_CURRENT_TIME':
+        return { ...state, currentTime: action.payload };
+      case 'SET_DURATION':
+        return { ...state, duration: action.payload };
+      case 'SET_VOLUME':
+        return { ...state, volume: action.payload };
+      default:
+        return state;
+    }
+  };
+
   // State management
   const [activeTab, setActiveTab] = useState("description");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedMusic, setGeneratedMusic] = useState<GeneratedMusic | null>(
-    null
-  );
+  const [generatedMusic, setGeneratedMusic] = useState<GeneratedMusic | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.7);
   const [progress, setProgress] = useState(0);
   const [isClient, setIsClient] = useState(false);
+
+  // Use reducer for player state
+  const [playerState, dispatchPlayerAction] = useReducer(playerReducer, {
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    volume: 0.7
+  });
 
   // Audio ref
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -171,21 +206,35 @@ export default function MusicGeneratorPage() {
     }
   };
 
-  const loadStoredTrack = (track: StoredMusic) => {
+  // Optimized track loading with preloading
+  const loadStoredTrack = useCallback((track: StoredMusic) => {
     setGeneratedMusic(track);
-    // Reset player state
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
+    // Reset player state using reducer
+    dispatchPlayerAction({ type: 'PAUSE' });
+    dispatchPlayerAction({ type: 'SET_CURRENT_TIME', payload: 0 });
+    dispatchPlayerAction({ type: 'SET_DURATION', payload: 0 });
 
-    // Optional: scroll to the music player section
-    setTimeout(() => {
+    // Preload audio in background
+    if (audioRef.current) {
+      // Set preload attribute for better performance
+      audioRef.current.preload = 'metadata';
+
+      // After metadata is loaded, preload the actual audio content
+      audioRef.current.onloadedmetadata = () => {
+        if (audioRef.current) {
+          audioRef.current.preload = 'auto';
+        }
+      };
+    }
+
+    // Optional: scroll to the music player section with optimized animation
+    requestAnimationFrame(() => {
       const musicPlayerElement = document.getElementById("music-player");
       if (musicPlayerElement) {
         musicPlayerElement.scrollIntoView({ behavior: "smooth" });
       }
-    }, 100);
-  };
+    });
+  }, []);
 
   // Generation config
   const [config, setConfig] = useState<GenerationConfig>({
@@ -195,6 +244,24 @@ export default function MusicGeneratorPage() {
     infer_step: 60,
     instrumental: false,
   });
+
+  // Performance monitoring (optional)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const observer = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        entries.forEach((entry) => {
+          if (entry.duration > 16) { // Longer than 1 frame
+            console.warn(`Slow operation: ${entry.name} took ${entry.duration}ms`);
+          }
+        });
+      });
+
+      observer.observe({ entryTypes: ['measure'] });
+
+      return () => observer.disconnect();
+    }
+  }, []);
 
   useEffect(() => {
     setIsClient(true);
@@ -207,54 +274,74 @@ export default function MusicGeneratorPage() {
     // }
   }, []);
 
-  // Audio event handlers
+  // Audio event handlers with optimized event listeners and throttling
+  // Audio event handlers with optimized event listeners and throttling
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(audio.duration);
-    const handleEnded = () => setIsPlaying(false);
+    // Optimize audio performance
+    if ('preload' in audio) {
+      audio.preload = 'metadata';
+    }
 
-    audio.addEventListener("timeupdate", updateTime);
-    audio.addEventListener("loadedmetadata", updateDuration);
-    audio.addEventListener("ended", handleEnded);
-    audio.volume = volume;
+    // Use throttled event handlers for better performance
+    let timeUpdateFrame: number;
+
+    // Memoize handlers to prevent recreation
+    const updateTime = () => {
+      if (!audio) return;
+      cancelAnimationFrame(timeUpdateFrame);
+      timeUpdateFrame = requestAnimationFrame(() => {
+        if (audio && !audio.paused) {
+          dispatchPlayerAction({ type: 'SET_CURRENT_TIME', payload: audio.currentTime });
+        }
+      });
+    };
+
+    const updateDuration = () => {
+      if (audio && audio.duration && !isNaN(audio.duration)) {
+        dispatchPlayerAction({ type: 'SET_DURATION', payload: audio.duration });
+      }
+    };
+
+    const handleEnded = () => {
+      dispatchPlayerAction({ type: 'PAUSE' });
+      dispatchPlayerAction({ type: 'SET_CURRENT_TIME', payload: 0 });
+    };
+
+    const handleError = (e: Event) => {
+      console.error('Audio error:', e);
+      dispatchPlayerAction({ type: 'PAUSE' });
+    };
+
+    // Use passive event listeners for better performance
+    audio.addEventListener("timeupdate", updateTime, { passive: true });
+    audio.addEventListener("loadedmetadata", updateDuration, { passive: true });
+    audio.addEventListener("ended", handleEnded, { passive: true });
+    audio.addEventListener("error", handleError, { passive: true });
+
+    // Set volume safely
+    if (audio.volume !== playerState.volume) {
+      audio.volume = Math.max(0, Math.min(1, playerState.volume));
+    }
 
     return () => {
-      audio.removeEventListener("timeupdate", updateTime);
-      audio.removeEventListener("loadedmetadata", updateDuration);
-      audio.removeEventListener("ended", handleEnded);
+      cancelAnimationFrame(timeUpdateFrame);
+      if (audio) {
+        audio.removeEventListener("timeupdate", updateTime);
+        audio.removeEventListener("loadedmetadata", updateDuration);
+        audio.removeEventListener("ended", handleEnded);
+        audio.removeEventListener("error", handleError);
+      }
     };
-  }, [generatedMusic, volume]);
+  }, [generatedMusic?.cloudinary_url, playerState.volume]); // More specific dependency
 
-  const togglePlayPause = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
+  // Original function replaced with memoized version above
 
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      audio.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
+  // Original function replaced with memoized version above
 
-  const handleSeek = (value: number[]) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.currentTime = value[0];
-    setCurrentTime(value[0]);
-  };
-
-  const handleVolumeChange = (value: number[]) => {
-    const newVolume = value[0];
-    setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
-  };
+  // Original function replaced with memoized version above
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -262,33 +349,16 @@ export default function MusicGeneratorPage() {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  const generateRandomSeed = () => {
-    setConfig((prev) => ({
-      ...prev,
-      seed: Math.floor(Math.random() * 1000000),
-    }));
-  };
+  // Original function replaced with memoized version above
 
-  const downloadAudio = () => {
-    if (generatedMusic?.cloudinary_url) {
-      // Create download link without navigating away
-      const link = document.createElement("a");
-      link.href = generatedMusic.cloudinary_url;
-      link.download = "generated-music.wav";
-      link.target = "_blank"; // Open in new tab to prevent navigation
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
+  // Original function replaced with memoized version above
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     setError(null);
     setProgress(0);
 
-    // Simulate progress
+    // Simulate progress with better error handling
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 90) return prev;
@@ -300,80 +370,181 @@ export default function MusicGeneratorPage() {
       let requestData: GenerationRequestData;
       let type: "description" | "custom_lyrics" | "described_lyrics";
 
-      // Determine request data based on active tab
+      // Determine request data based on active tab with enhanced error messages
       switch (activeTab) {
         case "description":
           type = "description";
+          if (!description.trim()) {
+            throw new Error("🎵 Aika needs your creative vision! Paint your musical idea with words - the more vivid, the better your track will be.");
+          }
+          if (description.trim().length < 10) {
+            throw new Error("🎨 Give Aika more details to work with! A richer description creates more amazing music.");
+          }
           requestData = {
-            full_described_song: description,
+            full_described_song: description.trim(),
             ...config,
           } as GenerateFromDescriptionRequest;
-
-          // Validate request
-          if (!validateGenerationRequest(type, requestData)) {
-            throw new Error("Please provide a description");
-          }
           break;
 
         case "custom_lyrics":
           type = "custom_lyrics";
+          if (!prompt.trim()) {
+            throw new Error("🎼 Aika needs to know the musical style! Tell me what genre or vibe you're going for (e.g., 'dreamy indie pop', 'energetic rock').");
+          }
+          if (!lyrics.trim()) {
+            throw new Error("✍️ Aika is ready to compose, but where are your lyrics? Share your words and I'll turn them into music!");
+          }
+          if (lyrics.trim().length < 20) {
+            throw new Error("📝 Your lyrics are a bit short! Give Aika more content to work with for a fuller musical experience.");
+          }
           requestData = {
-            prompt,
-            lyrics,
+            prompt: prompt.trim(),
+            lyrics: lyrics.trim(),
             ...config,
           } as GenerateWithCustomLyricsRequest;
-
-          // Validate request
-          if (!validateGenerationRequest(type, requestData)) {
-            throw new Error("Please provide both prompt and lyrics");
-          }
           break;
 
         case "described_lyrics":
           type = "described_lyrics";
+          if (!prompt.trim()) {
+            throw new Error("🎵 Aika needs the musical direction! Describe the style, tempo, or mood you want (e.g., 'upbeat electronic dance', 'mellow acoustic folk').");
+          }
+          if (!describedLyrics.trim()) {
+            throw new Error("💭 What story should Aika tell through lyrics? Describe the theme, emotion, or message you want to convey.");
+          }
+          if (describedLyrics.trim().length < 15) {
+            throw new Error("🎭 Give Aika more context about your lyrical concept! The richer your description, the better your song will be.");
+          }
           requestData = {
-            prompt,
-            described_lyrics: describedLyrics,
+            prompt: prompt.trim(),
+            described_lyrics: describedLyrics.trim(),
             ...config,
           } as GenerateWithDescribedLyricsRequest;
-
-          // Validate request
-          if (!validateGenerationRequest(type, requestData)) {
-            throw new Error(
-              "Please provide both prompt and lyrics description"
-            );
-          }
           break;
 
         default:
-          throw new Error("Invalid generation type");
+          throw new Error("🤔 Aika is confused! Please select a generation method (Description, Custom Lyrics, or AI Lyrics) to get started.");
       }
 
-      // Use the API function instead of direct fetch
-      const result = await generateMusic(type, requestData);
+      // Additional validation with friendly messages
+      if (!validateGenerationRequest(type, requestData)) {
+        throw new Error("🔍 Aika double-checked your input and something seems off. Please review your details and try again!");
+      }
+
+      // Validate config parameters with helpful messages
+      if (config.audio_duration < 30 || config.audio_duration > 300) {
+        throw new Error("⏱️ Aika works best with durations between 30 seconds and 5 minutes. Please adjust the duration slider!");
+      }
+
+      if (config.guidance_scale < 1 || config.guidance_scale > 20) {
+        throw new Error("🎨 The creativity setting seems out of range! Keep it between 1-20 for best results.");
+      }
+
+      if (config.infer_step < 20 || config.infer_step > 100) {
+        throw new Error("⚙️ Quality setting should be between 20-100 steps. Lower is faster, higher is better quality!");
+      }
+
+      // Use the API function with timeout and enhanced error handling
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("⏰ Aika is taking longer than usual! This might be due to high demand. Please try again in a moment - your creativity is worth the wait!")), 300000) // 5 minutes
+      );
+
+      const result = await Promise.race([
+        generateMusic(type, requestData),
+        timeoutPromise
+      ]) as GeneratedMusic;
+
+      // Enhanced result validation
+      if (!result) {
+        throw new Error("🎵 Aika encountered an unexpected issue while creating your music. This happens sometimes during my learning process - please try again!");
+      }
+
+      if (!result.cloudinary_url) {
+        throw new Error("🎼 Aika generated something but couldn't create the audio file properly. Let's try again - sometimes the second attempt works perfectly!");
+      }
+
+      if (!result.cover_image_cloudinary_url) {
+        console.warn("Cover image not generated, but audio is available");
+        // Don't throw error, just log warning since audio is more important
+      }
+
+      // Success! Set the generated music
       setGeneratedMusic(result);
       saveToStorage(result, type, requestData);
       setProgress(100);
+
+      // Show success message briefly
+      setTimeout(() => {
+        setError(null);
+      }, 100);
+
+      // Auto-scroll to player after generation with success message
+      setTimeout(() => {
+        const playerElement = document.getElementById("music-player");
+        playerElement?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 500);
+
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unexpected error occurred"
-      );
+      console.error("Aika music generation error:", err);
+
+      // Enhanced error handling with more specific messages
+      let errorMessage = "🎵 Aika encountered an unexpected issue. This is project #2 in my learning journey - these hiccups help me improve!";
+
+      if (err instanceof Error) {
+        // If it's one of our custom error messages, use it directly
+        if (err.message.includes('🎵') || err.message.includes('🎼') || err.message.includes('✍️') ||
+          err.message.includes('💭') || err.message.includes('🎨') || err.message.includes('🤔') ||
+          err.message.includes('🔍') || err.message.includes('⏱️') || err.message.includes('⚙️') ||
+          err.message.includes('⏰')) {
+          errorMessage = err.message;
+        } else {
+          // Handle specific API errors with friendly messages
+          const message = err.message.toLowerCase();
+
+          if (message.includes('network') || message.includes('fetch')) {
+            errorMessage = "🌐 Aika can't connect to the music generation servers right now. Check your internet connection and try again!";
+          } else if (message.includes('timeout')) {
+            errorMessage = "⏰ Aika is taking longer than usual - probably high demand! Give it another try in a moment.";
+          } else if (message.includes('rate limit') || message.includes('too many requests')) {
+            errorMessage = "🚦 Aika is getting lots of requests right now! Wait a minute and try again - popularity is a good problem to have!";
+          } else if (message.includes('invalid') || message.includes('bad request')) {
+            errorMessage = "📝 Aika didn't understand the request format. This might be a bug in my code - thanks for helping me test project #2!";
+          } else if (message.includes('unauthorized') || message.includes('forbidden')) {
+            errorMessage = "🔐 Aika hit an authentication issue. This is on my end - I'm still figuring out the backend deployment!";
+          } else if (message.includes('server error') || message.includes('internal error')) {
+            errorMessage = "🔧 Aika's servers are having a moment. These growing pains are part of building in public - try again soon!";
+          } else {
+            // Generic friendly error with build-in-public context
+            errorMessage = `🎵 Aika hit a snag: "${err.message}". Building project #2 of 52 means lots of learning from these moments!`;
+          }
+        }
+      }
+
+      setError(errorMessage);
+
+      // Add some helpful suggestions based on common issues
+      setTimeout(() => {
+        if (errorMessage.includes('connect') || errorMessage.includes('network')) {
+          setError(prev => prev + " 💡 Tip: Try refreshing the page if the issue persists.");
+        } else if (errorMessage.includes('timeout') || errorMessage.includes('longer than usual')) {
+          setError(prev => prev + " 💡 Tip: Try generating a shorter track first, then work up to longer ones.");
+        }
+      }, 2000);
+
     } finally {
       clearInterval(progressInterval);
       setIsGenerating(false);
-      setProgress(0);
+      // Delay reset for better UX - let users read any error messages
+      setTimeout(() => {
+        if (!error) {
+          setProgress(0);
+        }
+      }, 1000);
     }
   };
 
-  if (!isClient) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  const HistoryPanel = () => (
+  // Extract HistoryPanel to be loaded lazily
+  const HistoryPanel = React.memo(() => (
     <Card className="bg-white/5 border-white/10 backdrop-blur-xl shadow-2xl">
       <CardHeader>
         <CardTitle className="text-white flex items-center gap-3 text-xl font-bold">
@@ -426,9 +597,67 @@ export default function MusicGeneratorPage() {
         )}
       </CardContent>
     </Card>
-  );
+  ));
 
-  const resetConfig = () => {
+  // Create lazy-loaded components
+  const LazyHistoryPanel = useMemo(() => React.lazy(() =>
+    Promise.resolve({ default: HistoryPanel })
+  ), [storedTracks.length]); // Proper dependency
+
+  // Use useCallback for event handlers with reducer
+  const memoizedTogglePlayPause = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (playerState.isPlaying) {
+      audio.pause();
+      dispatchPlayerAction({ type: 'PAUSE' });
+    } else {
+      audio.play().catch(e => console.error('Error playing audio:', e));
+      dispatchPlayerAction({ type: 'PLAY' });
+    }
+  }, [playerState.isPlaying]);
+
+  const memoizedHandleSeek = useCallback((value: number[]) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.currentTime = value[0];
+    dispatchPlayerAction({ type: 'SET_CURRENT_TIME', payload: value[0] });
+  }, []);
+
+  const memoizedHandleVolumeChange = useCallback((value: number[]) => {
+    const newVolume = value[0];
+    dispatchPlayerAction({ type: 'SET_VOLUME', payload: newVolume });
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+  }, []);
+
+  const memoizedGenerateRandomSeed = useCallback(() => {
+    setConfig((prev) => ({
+      ...prev,
+      seed: Math.floor(Math.random() * 1000000),
+    }));
+  }, []);
+
+  const memoizedDownloadAudio = useCallback(() => {
+    if (!generatedMusic?.cloudinary_url) {
+      console.warn('No audio URL available for download');
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = generatedMusic.cloudinary_url;
+    link.download = "generated-music.wav";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [generatedMusic]);
+
+  const memoizedResetConfig = useCallback(() => {
     setConfig({
       audio_duration: 180,
       seed: -1,
@@ -436,7 +665,15 @@ export default function MusicGeneratorPage() {
       infer_step: 60,
       instrumental: false,
     });
-  };
+  }, []);
+
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
@@ -465,24 +702,23 @@ export default function MusicGeneratorPage() {
           <div className="space-y-4">
             <h1 className="text-6xl md:text-7xl font-black tracking-tight">
               <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent animate-pulse">
-                AI Music
+                Aika
               </span>
               <br />
-              <span className="text-white/90">Generator</span>
+              <span className="text-white/90">AI Music Generator</span>
             </h1>
 
             <div className="flex items-center justify-center gap-2 text-violet-300">
-              <Star className="w-5 h-5 fill-current" />
+              {/* <Star className="w-5 h-5 fill-current" /> */}
               <span className="text-lg font-medium">
-                Project #2 By Akash More
+                ⭐ Project #2/52 - Building My Portfolio & Testing What People Actually Want ⭐
               </span>
-              <Star className="w-5 h-5 fill-current" />
+              {/* <Star className="w-5 h-5 fill-current" /> */}
             </div>
 
             <p className="text-slate-300 text-xl max-w-3xl mx-auto leading-relaxed">
-              Transform your ideas into professional music tracks using
-              cutting-edge AI technology. Create, customize, and export
-              studio-quality audio in minutes.
+              Transform any idea into professional music tracks using AI. Join my 52-week journey of building,
+              learning, and discovering which projects deserve to become real businesses.
             </p>
           </div>
 
@@ -512,7 +748,7 @@ export default function MusicGeneratorPage() {
                   <div className="p-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600">
                     <Wand2 className="w-6 h-6 text-white" />
                   </div>
-                  Create Your Music
+                  Create Your Aika Track
                 </CardTitle>
                 <CardDescription className="text-slate-300 text-lg">
                   Choose your preferred method and let AI craft your perfect
@@ -558,7 +794,7 @@ export default function MusicGeneratorPage() {
                         </Label>
                         <Textarea
                           id="description"
-                          placeholder="Paint your musical vision with words... (e.g., 'An energetic synthwave track with 80s nostalgia, driving beats, and ethereal vocals that captures the essence of neon-lit cityscapes')"
+                          placeholder="Describe your musical vision in detail... (e.g., 'An upbeat indie-pop song with dreamy vocals, shimmering guitars, and a nostalgic 90s vibe perfect for summer road trips')"
                           value={description}
                           onChange={(e) => setDescription(e.target.value)}
                           className="min-h-[140px] bg-white/5 border-white/20 text-white placeholder-slate-400 backdrop-blur-sm text-lg resize-none focus:border-violet-400 transition-colors"
@@ -577,7 +813,7 @@ export default function MusicGeneratorPage() {
                         </Label>
                         <Input
                           id="prompt"
-                          placeholder="e.g., dreamy indie pop, heavy metal, jazz fusion, lo-fi hip hop"
+                          placeholder="e.g., dreamy indie pop with reverb, heavy metal with soaring guitars, chill lo-fi hip hop beats"
                           value={prompt}
                           onChange={(e) => setPrompt(e.target.value)}
                           className="bg-white/5 border-white/20 text-white placeholder-slate-400 backdrop-blur-sm text-lg h-14 focus:border-violet-400 transition-colors"
@@ -593,7 +829,11 @@ export default function MusicGeneratorPage() {
                         </Label>
                         <Textarea
                           id="lyrics"
-                          placeholder="Write your masterpiece here... Structure with [verse], [chorus], [bridge] tags for best results."
+                          placeholder="Pour your heart into lyrics... Use [Verse], [Chorus], [Bridge] tags. Example:
+[Verse]
+Walking down the empty street tonight
+[Chorus] 
+This is where the magic happens..."
                           value={lyrics}
                           onChange={(e) => setLyrics(e.target.value)}
                           className="min-h-[200px] bg-white/5 border-white/20 text-white placeholder-slate-400 backdrop-blur-sm text-lg resize-none focus:border-violet-400 transition-colors"
@@ -653,7 +893,7 @@ export default function MusicGeneratorPage() {
                     ) : (
                       <>
                         <Wand2 className="w-6 h-6 mr-3" />
-                        Generate Music
+                        Create with Aika
                         <Sparkles className="w-5 h-5 ml-3 animate-pulse" />
                       </>
                     )}
@@ -672,8 +912,7 @@ export default function MusicGeneratorPage() {
                       <Progress value={progress} className="h-3 bg-white/10" />
                       <div className="text-center text-slate-400 text-sm">
                         <span className="animate-pulse">
-                          🎵 AI is composing • Generating lyrics • Creating
-                          melodies • Mixing audio 🎵
+                          🎵 Aika is composing • Generating lyrics • Creating melodies • Mixing audio 🎵
                         </span>
                       </div>
                     </div>
@@ -721,7 +960,7 @@ export default function MusicGeneratorPage() {
 
                     <div className="flex-1 space-y-4">
                       <h3 className="text-white text-2xl font-bold">
-                        AI Generated Track
+                        Your Aika Creation
                       </h3>
                       <div className="flex flex-wrap gap-2">
                         {generatedMusic.categories.map((category, index) => (
@@ -737,18 +976,28 @@ export default function MusicGeneratorPage() {
                     </div>
                   </div>
 
-                  {/* Enhanced Audio Controls */}
+                  {/* Enhanced Audio Controls with optimized audio element */}
                   <div className="space-y-6">
-                    <audio ref={audioRef} src={generatedMusic.cloudinary_url} />
+                    <audio
+                      ref={audioRef}
+                      src={generatedMusic.cloudinary_url}
+                      preload="metadata"
+                      onLoadedMetadata={() => {
+                        // Once metadata is loaded, preload the actual audio content
+                        if (audioRef.current) {
+                          audioRef.current.preload = 'auto';
+                        }
+                      }}
+                    />
 
                     {/* Play Controls */}
                     <div className="flex items-center gap-6">
                       <Button
-                        onClick={togglePlayPause}
+                        onClick={memoizedTogglePlayPause}
                         size="lg"
                         className="h-16 w-16 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110"
                       >
-                        {isPlaying ? (
+                        {playerState.isPlaying ? (
                           <Pause className="w-8 h-8" />
                         ) : (
                           <Play className="w-8 h-8" />
@@ -756,7 +1005,7 @@ export default function MusicGeneratorPage() {
                       </Button>
 
                       <Button
-                        onClick={downloadAudio}
+                        onClick={memoizedDownloadAudio}
                         variant="outline"
                         size="lg"
                         className="h-12 px-8 bg-gradient-to-r from-slate-800 to-slate-700 border-slate-600 text-white hover:from-slate-700 hover:to-slate-600 hover:border-slate-500 hover:shadow-xl hover:shadow-black/20 transition-all duration-300 font-semibold"
@@ -769,16 +1018,16 @@ export default function MusicGeneratorPage() {
                     {/* Enhanced Progress Bar */}
                     <div className="space-y-3">
                       <Slider
-                        value={[currentTime]}
+                        value={[playerState.currentTime]}
                         min={0}
-                        max={duration || 100}
+                        max={playerState.duration || 100}
                         step={0.1}
-                        onValueChange={handleSeek}
+                        onValueChange={memoizedHandleSeek}
                         className="w-full [&>span:first-child]:bg-slate-700/50 [&>span:first-child>span]:bg-gradient-to-r [&>span:first-child>span]:from-fuchsia-400 [&>span:first-child>span]:to-pink-500 [&>span:first-child>span]:shadow-lg [&>span:first-child>span]:shadow-fuchsia-500/20"
                       />
                       <div className="flex justify-between text-slate-300 font-medium">
-                        <span>{formatTime(currentTime)}</span>
-                        <span>{formatTime(duration)}</span>
+                        <span>{formatTime(playerState.currentTime)}</span>
+                        <span>{formatTime(playerState.duration)}</span>
                       </div>
                     </div>
 
@@ -786,15 +1035,15 @@ export default function MusicGeneratorPage() {
                     <div className="flex items-center gap-4 max-w-xs">
                       <Volume2 className="w-5 h-5 text-slate-300" />
                       <Slider
-                        value={[volume]}
+                        value={[playerState.volume]}
                         min={0}
                         max={1}
                         step={0.01}
-                        onValueChange={handleVolumeChange}
+                        onValueChange={memoizedHandleVolumeChange}
                         className="flex-1 [&>span:first-child]:bg-slate-700/50 [&>span:first-child>span]:bg-gradient-to-r [&>span:first-child>span]:from-orange-400 [&>span:first-child>span]:to-amber-500 [&>span:first-child>span]:shadow-lg [&>span:first-child>span]:shadow-orange-500/20"
                       />
                       <span className="text-slate-400 text-sm min-w-[3rem]">
-                        {Math.round(volume * 100)}%
+                        {Math.round(playerState.volume * 100)}%
                       </span>
                     </div>
                   </div>
@@ -823,7 +1072,7 @@ export default function MusicGeneratorPage() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          onClick={resetConfig}
+                          onClick={memoizedResetConfig}
                           variant="ghost"
                           size="sm"
                           className="h-9 w-9 p-0 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200 rounded-lg"
@@ -994,7 +1243,7 @@ export default function MusicGeneratorPage() {
                       placeholder="Random"
                     />
                     <Button
-                      onClick={generateRandomSeed}
+                      onClick={memoizedGenerateRandomSeed}
                       variant="outline"
                       size="sm"
                       className="h-12 px-8 bg-gradient-to-r from-slate-800 to-slate-700 border-slate-600 text-white hover:from-slate-700 hover:to-slate-600 hover:border-slate-500 hover:shadow-xl hover:shadow-black/20 transition-all duration-300 font-semibold"
@@ -1050,17 +1299,57 @@ export default function MusicGeneratorPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="text-slate-300 text-sm space-y-2">
-                  <p>• Be specific with genres and emotions</p>
-                  <p>• Higher quality = longer generation time</p>
-                  <p>• Use [verse], [chorus] tags in lyrics</p>
-                  <p>• Try different seeds for variations</p>
+                  <p>💡 Be specific with genres and emotions for better results</p>
+                  <p>⏱️ Higher quality settings = longer generation time</p>
+                  <p>🎵 Use [Verse], [Chorus], [Bridge] tags in custom lyrics</p>
+                  <p>🎲 Try different seeds for unique variations</p>
+                  <p>🚀 This is project #2/52 - your feedback shapes what I build next!</p>
                 </div>
               </CardContent>
             </Card>
-            {storedTracks.length > 0 && <HistoryPanel />}
+            {storedTracks.length > 0 && (
+              <Suspense fallback={
+                <Card className="bg-white/5 border-white/10 backdrop-blur-xl shadow-2xl">
+                  <CardContent className="p-8 text-center">
+                    <div className="flex items-center justify-center gap-3">
+                      <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+                      <span className="text-slate-300">Loading history...</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              }>
+                <LazyHistoryPanel />
+              </Suspense>
+            )}
           </div>
         </div>
       </div>
+      {/* Build in Public Footer */}
+      <Card className="bg-gradient-to-r from-violet-600/10 to-fuchsia-600/10 border-violet-500/20 backdrop-blur-xl mt-12">
+        <CardContent className="p-8 text-center">
+          <p className="text-slate-300 text-lg mb-4">
+            👋 <strong>Building in Public:</strong> Aika is project #2 in my 52-week challenge
+          </p>
+          <p className="text-slate-400">
+            Some projects will fail, some will teach me invaluable lessons, and hopefully a few will solve real problems worth turning into businesses.
+            <span className="text-violet-300 font-semibold"> What do you think of Aika?</span>
+          </p>
+          <div className="flex justify-center gap-4 mt-6">
+            <Badge variant="outline" className="text-violet-300 border-violet-500/30">
+              Week #2 of 52
+            </Badge>
+            <Badge variant="outline" className="text-fuchsia-300 border-fuchsia-500/30">
+              Learning AI Music Generation
+            </Badge>
+            <Badge variant="outline" className="text-cyan-300 border-cyan-500/30">
+              Testing Product-Market Fit
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
+// Use proper typing for React.memo
+export default React.memo(MusicGeneratorPage);

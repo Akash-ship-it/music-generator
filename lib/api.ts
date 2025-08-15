@@ -31,12 +31,12 @@ export interface GenerateMusicResponse {
   audio_data: string;
 }
 
-// Modal endpoint URLs - Use the exact URLs from your deployment
+// Modal endpoint URLs - Updated with actual deployment endpoints
 const ENDPOINTS = {
-  generateFromDescription: 'https://sunilmore5432--music-generator-musicgenserver-genera-28c7b3-dev.modal.run',
-  generateWithLyrics: 'https://sunilmore5432--music-generator-musicgenserver-genera-676401-dev.modal.run',
-  generateWithDescribedLyrics: 'https://sunilmore5432--music-generator-musicgenserver-genera-91da16-dev.modal.run',
-  generateBase64: 'https://sunilmore5432--music-generator-musicgenserver-generate-dev.modal.run', // Base generate endpoint
+  generateFromDescription: 'https://sunilmore5432--music-generator-musicgenserver-generate-f-28c7b3.modal.run',
+  generateWithLyrics: 'https://sunilmore5432--music-generator-musicgenserver-generate-w-676401.modal.run',
+  generateWithDescribedLyrics: 'https://sunilmore5432--music-generator-musicgenserver-generate-w-91da16.modal.run',
+  generateBase64: 'https://sunilmore5432--music-generator-musicgenserver-generate.modal.run',
 };
 
 /**
@@ -53,6 +53,7 @@ export async function generateFromDescription(request: GenerateFromDescriptionRe
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify(request),
     });
@@ -89,6 +90,7 @@ export async function generateWithCustomLyrics(request: GenerateWithCustomLyrics
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify(request),
     });
@@ -124,6 +126,7 @@ export async function generateWithDescribedLyrics(request: GenerateWithDescribed
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify(request),
     });
@@ -158,6 +161,7 @@ export async function generateMusicBase64(request: GenerationConfig): Promise<Ge
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify(request),
     });
