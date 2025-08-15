@@ -599,6 +599,8 @@ function MusicGeneratorPage() {
     </Card>
   ));
 
+  HistoryPanel.displayName = 'HistoryPanel';
+
   // Create lazy-loaded components
   const LazyHistoryPanel = useMemo(() => React.lazy(() =>
     Promise.resolve({ default: HistoryPanel })
