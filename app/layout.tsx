@@ -113,7 +113,7 @@ export default function RootLayout({
         <meta name="application-name" content="Aika" />
         <meta name="msapplication-TileColor" content="#a855f7" />
         <meta name="theme-color" content="#a855f7" />
-        
+
         {/* Structured Data for better search understanding */}
         <script
           type="application/ld+json"
@@ -146,7 +146,7 @@ export default function RootLayout({
             })
           }}
         />
-        
+
         {/* Preconnect to external domains for better performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

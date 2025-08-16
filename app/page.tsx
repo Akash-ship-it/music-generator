@@ -39,6 +39,7 @@ import {
   Star,
   History,
   HelpCircle,
+  Trash2,
 } from "lucide-react";
 import {
   Tooltip,
@@ -234,6 +235,53 @@ function MusicGeneratorPage() {
         musicPlayerElement.scrollIntoView({ behavior: "smooth" });
       }
     });
+  }, []);
+
+  // Add these functions after the existing storage functions
+
+  const deleteTrack = useCallback((trackId: string) => {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) {
+        console.warn("LocalStorage not available");
+        return;
+      }
+
+      const existingTracks = getFromStorage();
+      const updatedTracks = existingTracks.filter(track => track.id !== trackId);
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTracks));
+      setStoredTracks(updatedTracks);
+
+      // If the deleted track was currently playing, clear the player
+      if (generatedMusic && 'id' in generatedMusic && generatedMusic.id === trackId) {
+        setGeneratedMusic(null);
+        dispatchPlayerAction({ type: 'PAUSE' });
+        dispatchPlayerAction({ type: 'SET_CURRENT_TIME', payload: 0 });
+      }
+    } catch (error) {
+      console.error("Failed to delete track:", error);
+      setError("Failed to delete track. Please try again.");
+    }
+  }, [generatedMusic]);
+
+  const clearAllTracks = useCallback(() => {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) {
+        console.warn("LocalStorage not available");
+        return;
+      }
+
+      localStorage.removeItem(STORAGE_KEY);
+      setStoredTracks([]);
+
+      // Clear currently playing track if any
+      setGeneratedMusic(null);
+      dispatchPlayerAction({ type: 'PAUSE' });
+      dispatchPlayerAction({ type: 'SET_CURRENT_TIME', payload: 0 });
+    } catch (error) {
+      console.error("Failed to clear tracks:", error);
+      setError("Failed to clear history. Please try again.");
+    }
   }, []);
 
   // Generation config
@@ -544,13 +592,38 @@ function MusicGeneratorPage() {
   };
 
   // Extract HistoryPanel to be loaded lazily
+  // Replace the existing HistoryPanel component with this updated version:
+
+  // Replace the existing HistoryPanel component with this updated version:
+
   const HistoryPanel = React.memo(() => (
     <Card className="bg-white/5 border-white/10 backdrop-blur-xl shadow-2xl">
       <CardHeader>
-        <CardTitle className="text-white flex items-center gap-3 text-xl font-bold">
-          <History className="w-5 h-5 text-violet-400" />
-          Track History ({storedTracks.length})
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-white flex items-center gap-3 text-xl font-bold">
+            <History className="w-5 h-5 text-violet-400" />
+            Track History ({storedTracks.length})
+          </CardTitle>
+          {storedTracks.length > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={clearAllTracks}
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 p-0 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 rounded-lg"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-slate-800 border-slate-600 text-white">
+                  <p>Clear all history</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4 max-h-96 overflow-y-auto">
         {storedTracks.length === 0 ? (
@@ -561,32 +634,49 @@ function MusicGeneratorPage() {
           storedTracks.map((track) => (
             <div
               key={track.id}
-              className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
+              className="relative p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group cursor-pointer"
               onClick={() => loadStoredTrack(track)}
             >
+              {/* Delete button overlay */}
+              <div className="absolute inset-0 bg-red-500/90 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteTrack(track.id);
+                  }}
+                  variant="ghost"
+                  className="text-white hover:text-red-200 hover:bg-red-600/50"
+                >
+                  ✕ Delete Track
+                </Button>
+              </div>
+
               <div className="flex items-start gap-3">
                 <Image
                   src={track.cover_image_cloudinary_url}
                   alt="Track cover"
-                  width={48}
-                  height={48}
-                  className="w-12 h-12 rounded-lg object-cover"
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
                 />
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-white font-medium truncate text-sm">
-                    {track.title}
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <h4 className="text-white font-medium text-sm leading-tight mb-1 truncate">
+                    {track.title.split(' - ')[0]}...
                   </h4>
-                  <p className="text-slate-400 text-xs">
-                    {new Date(track.timestamp).toLocaleDateString()}
+                  <p className="text-slate-400 text-xs mb-2 truncate">
+                    {new Date(track.timestamp).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric'
+                    })}
                   </p>
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="flex flex-wrap gap-1">
                     {track.categories.slice(0, 2).map((cat, idx) => (
                       <Badge
                         key={idx}
                         variant="outline"
-                        className="text-xs border-violet-500/30 text-violet-300"
+                        className="text-xs border-violet-500/30 text-violet-300 px-1.5 py-0.5 truncate max-w-20"
                       >
-                        {cat}
+                        {cat.length > 8 ? cat.slice(0, 8) + '...' : cat}
                       </Badge>
                     ))}
                   </div>
