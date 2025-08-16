@@ -1434,7 +1434,7 @@ This is where the magic happens..."
                   </div>
                 </div>
 
-              {/* Instrumental Toggle */}
+                {/* Instrumental Toggle */}
                 <div className="space-y-3">
                   <Label className="text-white font-semibold flex items-center gap-2 text-base">
                     <Headphones className="w-4 h-4 text-violet-400" />
@@ -1453,7 +1453,7 @@ This is where the magic happens..."
                       </Tooltip>
                     </TooltipProvider>
                   </Label>
-                  
+
                   <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-white/5 to-white/3 border border-white/10 hover:border-white/20 hover:from-white/8 hover:to-white/5 transition-all duration-200 backdrop-blur-sm">
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full animate-pulse ${config.instrumental ? 'bg-orange-400' : 'bg-violet-400'}`}></div>
@@ -1461,7 +1461,7 @@ This is where the magic happens..."
                         {config.instrumental ? 'Instrumental only' : 'With vocals'}
                       </span>
                     </div>
-                    
+
                     <Switch
                       checked={config.instrumental}
                       onCheckedChange={(checked) =>
