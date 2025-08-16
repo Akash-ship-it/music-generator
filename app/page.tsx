@@ -124,6 +124,7 @@ function MusicGeneratorPage() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [isClient, setIsClient] = useState(false);
+  const [trackToDelete, setTrackToDelete] = useState<StoredMusic | null>(null);
 
   // Use reducer for player state
   const [playerState, dispatchPlayerAction] = useReducer(playerReducer, {
@@ -239,7 +240,8 @@ function MusicGeneratorPage() {
 
   // Add these functions after the existing storage functions
 
-  const deleteTrack = useCallback((trackId: string) => {
+  const confirmDeleteTrack = useCallback((trackId: string) => {
+
     try {
       if (typeof window === "undefined" || !window.localStorage) {
         console.warn("LocalStorage not available");
@@ -258,11 +260,14 @@ function MusicGeneratorPage() {
         dispatchPlayerAction({ type: 'PAUSE' });
         dispatchPlayerAction({ type: 'SET_CURRENT_TIME', payload: 0 });
       }
+
+      setTrackToDelete(null); // Close dialog
     } catch (error) {
       console.error("Failed to delete track:", error);
       setError("Failed to delete track. Please try again.");
     }
   }, [generatedMusic]);
+
 
   const clearAllTracks = useCallback(() => {
     try {
@@ -597,99 +602,174 @@ function MusicGeneratorPage() {
   // Replace the existing HistoryPanel component with this updated version:
 
   const HistoryPanel = React.memo(() => (
-    <Card className="bg-white/5 border-white/10 backdrop-blur-xl shadow-2xl">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-white flex items-center gap-3 text-xl font-bold">
-            <History className="w-5 h-5 text-violet-400" />
-            Track History ({storedTracks.length})
-          </CardTitle>
-          {storedTracks.length > 0 && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={clearAllTracks}
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 w-9 p-0 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 rounded-lg"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="bg-slate-800 border-slate-600 text-white">
-                  <p>Clear all history</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4 max-h-96 overflow-y-auto">
-        {storedTracks.length === 0 ? (
-          <p className="text-slate-400 text-center py-8">
-            No tracks generated yet
-          </p>
-        ) : (
-          storedTracks.map((track) => (
-            <div
-              key={track.id}
-              className="relative p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group cursor-pointer"
-              onClick={() => loadStoredTrack(track)}
-            >
-              {/* Delete button overlay */}
-              <div className="absolute inset-0 bg-red-500/90 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteTrack(track.id);
-                  }}
-                  variant="ghost"
-                  className="text-white hover:text-red-200 hover:bg-red-600/50"
+    <>
+      <Card className="bg-white/5 border-white/10 backdrop-blur-xl shadow-2xl">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-white flex items-center gap-3 text-xl font-bold">
+              <History className="w-5 h-5 text-violet-400" />
+              Track History ({storedTracks.length})
+            </CardTitle>
+            {storedTracks.length > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={clearAllTracks}
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-slate-800 border-slate-600 text-white">
+                    <p>Clear all history</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
+          {storedTracks.length === 0 ? (
+            <p className="text-slate-400 text-center py-8">
+              No tracks generated yet
+            </p>
+          ) : (
+            storedTracks.map((track) => (
+              <div
+                key={track.id}
+                className="relative p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-200 group"
+              >
+                {/* Main clickable area for playing track */}
+                <div
+                  className="cursor-pointer pr-10" // Add right padding for delete button
+                  onClick={() => loadStoredTrack(track)}
                 >
-                  ✕ Delete Track
-                </Button>
-              </div>
+                  <div className="flex items-start gap-3">
+                    <div className="relative">
+                      <Image
+                        src={track.cover_image_cloudinary_url}
+                        alt="Track cover"
+                        width={40}
+                        height={40}
+                        className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                      />
+                      {/* Play indicator overlay */}
+                      <div className="absolute inset-0 bg-black/60 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                        <Play className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
 
-              <div className="flex items-start gap-3">
-                <Image
-                  src={track.cover_image_cloudinary_url}
-                  alt="Track cover"
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <h4 className="text-white font-medium text-sm leading-tight mb-1 truncate">
-                    {track.title.split(' - ')[0]}...
-                  </h4>
-                  <p className="text-slate-400 text-xs mb-2 truncate">
-                    {new Date(track.timestamp).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric'
-                    })}
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {track.categories.slice(0, 2).map((cat, idx) => (
-                      <Badge
-                        key={idx}
-                        variant="outline"
-                        className="text-xs border-violet-500/30 text-violet-300 px-1.5 py-0.5 truncate max-w-20"
-                      >
-                        {cat.length > 8 ? cat.slice(0, 8) + '...' : cat}
-                      </Badge>
-                    ))}
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <h4 className="text-white font-medium text-sm leading-tight mb-1 truncate">
+                        {track.title.split(' - ')[0]}...
+                      </h4>
+                      <p className="text-slate-400 text-xs mb-2 truncate">
+                        {new Date(track.timestamp).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {track.categories.slice(0, 2).map((cat, idx) => (
+                          <Badge
+                            key={idx}
+                            variant="outline"
+                            className="text-xs border-violet-500/30 text-violet-300 px-1.5 py-0.5 truncate max-w-20"
+                          >
+                            {cat.length > 8 ? cat.slice(0, 8) + '...' : cat}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
+
+                {/* Delete button - always visible but subtle */}
+                <div className="absolute top-2 right-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTrackToDelete(track);
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-slate-500 hover:text-red-400 hover:bg-red-500/20 transition-all duration-200 rounded-md opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-slate-800 border-slate-600 text-white">
+                        <p>Delete track</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+
+                {/* Currently playing indicator */}
+                {generatedMusic && 'id' in generatedMusic && generatedMusic.id === track.id && (
+                  <div className="absolute left-2 top-2">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="text-green-400 text-xs font-medium">Playing</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Confirmation Dialog */}
+      {trackToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <Card className="bg-slate-800 border-slate-600 max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+                Confirm Deletion
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-slate-300">
+                Are you sure you want to delete this track? This action cannot be undone.
+              </p>
+              <div className="text-sm text-slate-400 bg-slate-700/50 p-3 rounded-lg">
+                <strong>Track:</strong> {trackToDelete.title.split(' - ')[0]}...
+              </div>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={() => setTrackToDelete(null)}
+                  className="text-slate-300 hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => confirmDeleteTrack(trackToDelete.id)}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Track
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </>
   ));
 
   HistoryPanel.displayName = 'HistoryPanel';
+
 
   // Create lazy-loaded components
   const LazyHistoryPanel = useMemo(() => React.lazy(() =>
