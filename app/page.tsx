@@ -883,14 +883,14 @@ function MusicGeneratorPage() {
             <div className="flex items-center justify-center gap-2 text-violet-300">
               {/* <Star className="w-5 h-5 fill-current" /> */}
               <span className="text-lg font-medium">
-                ⭐ Project #2/52 - Building My Portfolio & Testing What People Actually Want ⭐
+                ⭐ Project #2/52 - Solving Problems & Testing What People Actually Need ⭐
               </span>
               {/* <Star className="w-5 h-5 fill-current" /> */}
             </div>
 
             <p className="text-slate-300 text-xl max-w-3xl mx-auto leading-relaxed">
-              Transform any idea into professional music tracks using AI. Join my 52-week journey of building,
-              learning, and discovering which projects deserve to become real businesses.
+              Transform any idea into professional music tracks using AI. Follow my 52-week journey of building real solutions and discovering which projects deserve to become meaningful businesses.
+
             </p>
           </div>
 
@@ -1180,7 +1180,7 @@ This is where the magic happens..."
                         onClick={memoizedDownloadAudio}
                         variant="outline"
                         size="lg"
-                        className="h-12 px-8 bg-gradient-to-r from-slate-800 to-slate-700 border-slate-600 text-white hover:from-slate-700 hover:to-slate-600 hover:border-slate-500 hover:shadow-xl hover:shadow-black/20 transition-all duration-300 font-semibold"
+                        className="h-12 px-8 bg-white/5 border-white/20 text-white hover:bg-white hover:border-white/30 hover:shadow-xl hover:shadow-white/10 transition-all duration-300 font-semibold backdrop-blur-sm"
                       >
                         <Download className="w-5 h-5 mr-3" />
                         Download Track
@@ -1272,7 +1272,7 @@ This is where the magic happens..."
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <HelpCircle className="w-4 h-4 text-slate-400 hover:text-violet-400 cursor-help ml-1" />
+                          <HelpCircle className="w-4 h-4 text-slate-400 hover:text-violet-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="bg-slate-800 border-slate-600 text-white max-w-xs">
                           <p>
@@ -1313,7 +1313,7 @@ This is where the magic happens..."
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <HelpCircle className="w-4 h-4 text-slate-400 hover:text-violet-400 cursor-help ml-1" />
+                          <HelpCircle className="w-4 h-4 text-slate-400 hover:text-violet-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="bg-slate-800 border-slate-600 text-white max-w-xs">
                           <p>
@@ -1353,7 +1353,7 @@ This is where the magic happens..."
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <HelpCircle className="w-4 h-4 text-slate-400 hover:text-violet-400 cursor-help ml-1" />
+                          <HelpCircle className="w-4 h-4 text-slate-400 hover:text-violet-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="bg-slate-800 border-slate-600 text-white max-w-xs">
                           <p>
@@ -1389,7 +1389,7 @@ This is where the magic happens..."
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <HelpCircle className="w-4 h-4 text-slate-400 hover:text-violet-400 cursor-help ml-1" />
+                          <HelpCircle className="w-4 h-4 text-slate-400 hover:text-violet-400 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="bg-slate-800 border-slate-600 text-white max-w-xs">
                           <p>
@@ -1414,38 +1414,54 @@ This is where the magic happens..."
                       className="flex-1 bg-white/5 border-white/20 text-white h-12 focus:border-violet-400 focus:ring-violet-400/20"
                       placeholder="Random"
                     />
-                    <Button
-                      onClick={memoizedGenerateRandomSeed}
-                      variant="outline"
-                      size="sm"
-                      className="h-12 px-8 bg-gradient-to-r from-slate-800 to-slate-700 border-slate-600 text-white hover:from-slate-700 hover:to-slate-600 hover:border-slate-500 hover:shadow-xl hover:shadow-black/20 transition-all duration-300 font-semibold"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Instrumental Toggle */}
-                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors">
-                  <Label className="text-white font-semibold flex items-center gap-2">
-                    <Headphones className="w-4 h-4 text-violet-400" />
-                    Instrumental Only
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <HelpCircle className="w-4 h-4 text-slate-400 hover:text-violet-400 cursor-help ml-1" />
+                          <Button
+                            onClick={memoizedGenerateRandomSeed}
+                            variant="ghost"
+                            size="sm"
+                            className="h-12 w-12 p-0 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all duration-200 rounded-lg"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-slate-800 border-slate-600 text-white">
+                          <p>Generate random seed</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </div>
+
+              {/* Instrumental Toggle */}
+                <div className="space-y-3">
+                  <Label className="text-white font-semibold flex items-center gap-2 text-base">
+                    <Headphones className="w-4 h-4 text-violet-400" />
+                    Audio Type
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="w-4 h-4 text-slate-400 hover:text-violet-400 cursor-help ml-2" />
                         </TooltipTrigger>
                         <TooltipContent className="bg-slate-800 border-slate-600 text-white max-w-xs">
                           <p>
-                            Generate music without vocals. Perfect for
-                            background music, study tracks, or instrumental
-                            versions.
+                            Choose between instrumental music (no vocals) or full tracks with singing.
+                            Perfect for background music or complete songs.
                           </p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </Label>
-                  <div className="relative">
+                  
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-white/5 to-white/3 border border-white/10 hover:border-white/20 hover:from-white/8 hover:to-white/5 transition-all duration-200 backdrop-blur-sm">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full animate-pulse ${config.instrumental ? 'bg-orange-400' : 'bg-violet-400'}`}></div>
+                      <span className="text-slate-300 font-medium">
+                        {config.instrumental ? 'Instrumental only' : 'With vocals'}
+                      </span>
+                    </div>
+                    
                     <Switch
                       checked={config.instrumental}
                       onCheckedChange={(checked) =>
@@ -1454,7 +1470,7 @@ This is where the magic happens..."
                           instrumental: checked,
                         }))
                       }
-                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-violet-500 data-[state=checked]:to-fuchsia-500 data-[state=unchecked]:bg-slate-600 transition-all duration-200"
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-orange-500 data-[state=checked]:to-amber-500 data-[state=unchecked]:bg-gradient-to-r data-[state-unchecked]:from-violet-500 data-[state=unchecked]:to-fuchsia-500 transition-all duration-200 shadow-lg"
                     />
                   </div>
                 </div>

@@ -1,15 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Primary font for headings and branding - Modern, geometric, premium feel
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Body text font - Clean, highly readable, professional
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+// Monospace font for technical elements, code, and IDs
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -114,6 +128,18 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#a855f7" />
         <meta name="theme-color" content="#a855f7" />
 
+        {/* Font preloading for better performance */}
+        <link
+          rel="preload"
+          href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+          as="style"
+        />
+        <link
+          rel="preload"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+          as="style"
+        />
+
         {/* Structured Data for better search understanding */}
         <script
           type="application/ld+json"
@@ -123,7 +149,7 @@ export default function RootLayout({
               "@type": "WebApplication",
               "name": "Aika - AI Music Generator",
               "description": "Transform any idea into professional music tracks using AI. Create songs from descriptions, custom lyrics, or AI-generated lyrics.",
-              "url": "https://music-generator-lilac.vercel.app/", // Update with your actual domain
+              "url": "https://aika-music.vercel.app/", // Update with your actual domain
               "applicationCategory": "MultimediaApplication",
               "operatingSystem": "Any",
               "offers": {
@@ -152,7 +178,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${manrope.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
         suppressHydrationWarning
       >
         {children}
