@@ -760,7 +760,7 @@ function MusicGeneratorPage() {
 
               <CardContent className="space-y-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 backdrop-blur-sm p-1">
+                  <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 bg-white/5 border border-white/10 backdrop-blur-sm p-1">
                     <TabsTrigger
                       value="description"
                       className="text-white data-[state=active]:bg-violet-600 data-[state=active]:text-white transition-all duration-200"
@@ -784,7 +784,7 @@ function MusicGeneratorPage() {
                     </TabsTrigger>
                   </TabsList>
 
-                  <div className="mt-8">
+                  <div className="mt-16 md:mt-8">
                     <TabsContent value="description" className="space-y-6">
                       <div className="space-y-3">
                         <Label
@@ -1336,17 +1336,6 @@ This is where the magic happens..."
             Some projects will fail, some will teach me invaluable lessons, and hopefully a few will solve real problems worth turning into businesses.
             <span className="text-violet-300 font-semibold"> What do you think of Aika?</span>
           </p>
-          <div className="flex justify-center gap-4 mt-6">
-            <Badge variant="outline" className="text-violet-300 border-violet-500/30">
-              Week #2 of 52
-            </Badge>
-            <Badge variant="outline" className="text-fuchsia-300 border-fuchsia-500/30">
-              Learning AI Music Generation
-            </Badge>
-            <Badge variant="outline" className="text-cyan-300 border-cyan-500/30">
-              Testing Product-Market Fit
-            </Badge>
-          </div>
         </CardContent>
       </Card>
     </div>
