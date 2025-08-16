@@ -215,4 +215,6 @@ const GenerationSection = React.memo((props: GenerationSectionProps) => {
   );
 });
 
+GenerationSection.displayName = 'GenerationSection';
+
 export default GenerationSection;

@@ -23,4 +23,6 @@ const ProTips = React.memo(() => (
   </Card>
 ));
 
+ProTips.displayName = 'ProTips';
+
 export default ProTips;

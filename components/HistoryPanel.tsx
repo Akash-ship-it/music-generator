@@ -204,4 +204,6 @@ const HistoryPanel = React.memo((props: HistoryPanelProps) => {
   );
 });
 
+HistoryPanel.displayName = 'HistoryPanel';
+
 export default HistoryPanel;

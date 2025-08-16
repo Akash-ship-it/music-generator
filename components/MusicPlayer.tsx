@@ -236,4 +236,6 @@ const MusicPlayer = React.memo((props: MusicPlayerProps) => {
   );
 });
 
+MusicPlayer.displayName = 'MusicPlayer';
+
 export default MusicPlayer;

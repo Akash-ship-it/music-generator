@@ -254,4 +254,6 @@ const SettingsPanel = React.memo((props: SettingsPanelProps) => {
   );
 });
 
+SettingsPanel.displayName = 'SettingsPanel';
+
 export default SettingsPanel;
